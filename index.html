@@ -153,6 +153,34 @@
             border-radius: 10px;
             cursor: pointer;
             margin-top: 20px;
+            width: 100%;
+        }
+
+        .send-btn {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            margin-top: 10px;
+            width: 100%;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #51cf66;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            z-index: 1000;
+            display: none;
         }
     </style>
 </head>
@@ -246,14 +274,20 @@
         <div id="result-section" class="result-section">
             <h2 style="margin-bottom: 20px; text-align: center;">Результаты анализа</h2>
             <div id="results-container"></div>
-            <button class="back-btn" onclick="goBack()">Вернуться к вводу данных</button>
+            <button class="send-btn" onclick="sendToTelegram()">📤 Отправить результаты в чат</button>
+            <button class="back-btn" onclick="goBack()">🔄 Сделать новый анализ</button>
         </div>
     </div>
 
+    <div class="notification" id="notification">Результаты отправлены!</div>
+
     <script>
         let tg = window.Telegram.WebApp;
+        let currentResults = [];
+        
+        // Инициализация Telegram Web App
         tg.expand();
-        tg.MainButton.setText("Отправить результаты").hide();
+        tg.MainButton.hide();
         
         function switchTab(tabName) {
             document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
@@ -276,85 +310,142 @@
             const cholesterol = parseFloat(document.getElementById('cholesterol').value);
             
             let results = [];
+            let hasData = false;
             
             // Анализ гемоглобина
             if (hemoglobin) {
+                hasData = true;
                 if (hemoglobin < 120) {
                     results.push({
                         parameter: 'Гемоглобин',
                         value: hemoglobin + ' г/л',
                         status: 'warning',
-                        explanation: 'Пониженный уровень гемоглобина может указывать на анемию. Рекомендуется консультация врача.'
+                        explanation: '❌ Пониженный уровень гемоглобина может указывать на анемию. Рекомендуется консультация врача, употребление железосодержащих продуктов.'
                     });
                 } else if (hemoglobin > 160) {
                     results.push({
                         parameter: 'Гемоглобин',
                         value: hemoglobin + ' г/л',
                         status: 'warning',
-                        explanation: 'Повышенный уровень гемоглобина может быть связан с обезвоживанием или другими состояниями.'
+                        explanation: '⚠️ Повышенный уровень гемоглобина может быть связан с обезвоживанием, курением или заболеваниями легких.'
                     });
                 } else {
                     results.push({
                         parameter: 'Гемоглобин',
                         value: hemoglobin + ' г/л',
                         status: 'normal',
-                        explanation: 'Уровень гемоглобина в пределах нормы.'
+                        explanation: '✅ Уровень гемоглобина в пределах нормы. Отличный показатель!'
                     });
                 }
             }
             
             // Анализ лейкоцитов
             if (leukocytes) {
+                hasData = true;
                 if (leukocytes < 4.0) {
                     results.push({
                         parameter: 'Лейкоциты',
                         value: leukocytes + ' ×10⁹/л',
                         status: 'warning',
-                        explanation: 'Пониженное количество лейкоцитов (лейкопения) может свидетельствовать о снижении иммунитета.'
+                        explanation: '❌ Пониженное количество лейкоцитов (лейкопения) может свидетельствовать о снижении иммунитета, вирусных инфекциях или приеме некоторых лекарств.'
                     });
                 } else if (leukocytes > 9.0) {
                     results.push({
                         parameter: 'Лейкоциты',
                         value: leukocytes + ' ×10⁹/л',
                         status: 'warning',
-                        explanation: 'Повышенное количество лейкоцитов (лейкоцитоз) может указывать на воспалительный процесс.'
+                        explanation: '⚠️ Повышенное количество лейкоцитов (лейкоцитоз) может указывать на воспалительный процесс, бактериальную инфекцию или стресс.'
                     });
                 } else {
                     results.push({
                         parameter: 'Лейкоциты',
                         value: leukocytes + ' ×10⁹/л',
                         status: 'normal',
-                        explanation: 'Уровень лейкоцитов в пределах нормы.'
+                        explanation: '✅ Уровень лейкоцитов в пределах нормы. Иммунная система в порядке!'
+                    });
+                }
+            }
+            
+            // Анализ тромбоцитов
+            if (platelets) {
+                hasData = true;
+                if (platelets < 180) {
+                    results.push({
+                        parameter: 'Тромбоциты',
+                        value: platelets + ' ×10⁹/л',
+                        status: 'warning',
+                        explanation: '❌ Пониженный уровень тромбоцитов может увеличивать риск кровотечений. Требуется консультация гематолога.'
+                    });
+                } else if (platelets > 320) {
+                    results.push({
+                        parameter: 'Тромбоциты',
+                        value: platelets + ' ×10⁹/л',
+                        status: 'warning',
+                        explanation: '⚠️ Повышенный уровень тромбоцитов может увеличивать риск тромбообразования.'
+                    });
+                } else {
+                    results.push({
+                        parameter: 'Тромбоциты',
+                        value: platelets + ' ×10⁹/л',
+                        status: 'normal',
+                        explanation: '✅ Уровень тромбоцитов в пределах нормы. Свертываемость крови в порядке!'
                     });
                 }
             }
             
             // Анализ глюкозы
             if (glucose) {
+                hasData = true;
                 if (glucose < 3.3) {
                     results.push({
                         parameter: 'Глюкоза',
                         value: glucose + ' ммоль/л',
                         status: 'warning',
-                        explanation: 'Пониженный уровень глюкозы (гипогликемия). Требуется консультация врача.'
+                        explanation: '❌ Пониженный уровень глюкозы (гипогликемия). Может вызывать слабость, головокружение. Требуется консультация врача.'
                     });
                 } else if (glucose > 5.5) {
                     results.push({
                         parameter: 'Глюкоза',
                         value: glucose + ' ммоль/л',
                         status: 'warning',
-                        explanation: 'Повышенный уровень глюкозы (гипергликемия). Рекомендуется дополнительное обследование.'
+                        explanation: '⚠️ Повышенный уровень глюкозы (гипергликемия). Рекомендуется дополнительное обследование у эндокринолога.'
                     });
                 } else {
                     results.push({
                         parameter: 'Глюкоза',
                         value: glucose + ' ммоль/л',
                         status: 'normal',
-                        explanation: 'Уровень глюкозы в пределах нормы.'
+                        explanation: '✅ Уровень глюкозы в пределах нормы. Отличный показатель углеводного обмена!'
                     });
                 }
             }
             
+            // Анализ холестерина
+            if (cholesterol) {
+                hasData = true;
+                if (cholesterol > 5.2) {
+                    results.push({
+                        parameter: 'Холестерин',
+                        value: cholesterol + ' ммоль/л',
+                        status: 'warning',
+                        explanation: '⚠️ Повышенный уровень холестерина. Рекомендуется диета с ограничением жирной пищи и консультация кардиолога.'
+                    });
+                } else {
+                    results.push({
+                        parameter: 'Холестерин',
+                        value: cholesterol + ' ммоль/л',
+                        status: 'normal',
+                        explanation: '✅ Уровень холестерина в пределах нормы. Сердечно-сосудистая система под защитой!'
+                    });
+                }
+            }
+            
+            if (!hasData) {
+                alert('Пожалуйста, заполните хотя бы одно поле!');
+                return;
+            }
+            
+            currentResults = results;
             showResults(results);
         }
         
@@ -366,75 +457,121 @@
             const urineLeukocytes = parseInt(document.getElementById('urine-leukocytes').value);
             
             let results = [];
+            let hasData = false;
             
             // Анализ цвета
-            if (color === 'red' || color === 'brown') {
-                results.push({
-                    parameter: 'Цвет мочи',
-                    value: getColorDescription(color),
-                    status: 'warning',
-                    explanation: 'Необычный цвет мочи может указывать на наличие крови или других примесей. Необходима консультация врача.'
-                });
-            } else if (color) {
-                results.push({
-                    parameter: 'Цвет мочи',
-                    value: getColorDescription(color),
-                    status: 'normal',
-                    explanation: 'Цвет мочи в пределах нормы.'
-                });
+            if (color) {
+                hasData = true;
+                if (color === 'red' || color === 'brown') {
+                    results.push({
+                        parameter: 'Цвет мочи',
+                        value: getColorDescription(color),
+                        status: 'warning',
+                        explanation: '❌ Необычный цвет мочи может указывать на наличие крови, желчных пигментов или других примесей. Необходима срочная консультация врача!'
+                    });
+                } else if (color === 'dark-yellow') {
+                    results.push({
+                        parameter: 'Цвет мочи',
+                        value: getColorDescription(color),
+                        status: 'warning',
+                        explanation: '⚠️ Темно-желтый цвет может свидетельствовать об обезвоживании. Увеличьте потребление жидкости.'
+                    });
+                } else {
+                    results.push({
+                        parameter: 'Цвет мочи',
+                        value: getColorDescription(color),
+                        status: 'normal',
+                        explanation: '✅ Цвет мочи в пределах нормы.'
+                    });
+                }
             }
             
             // Анализ прозрачности
-            if (transparency === 'cloudy') {
-                results.push({
-                    parameter: 'Прозрачность',
-                    value: 'Мутная',
-                    status: 'warning',
-                    explanation: 'Мутная моча может свидетельствовать о наличии солей, бактерий или лейкоцитов.'
-                });
-            } else if (transparency) {
-                results.push({
-                    parameter: 'Прозрачность',
-                    value: 'Прозрачная',
-                    status: 'normal',
-                    explanation: 'Прозрачность мочи в норме.'
-                });
+            if (transparency) {
+                hasData = true;
+                if (transparency === 'cloudy') {
+                    results.push({
+                        parameter: 'Прозрачность',
+                        value: 'Мутная',
+                        status: 'warning',
+                        explanation: '⚠️ Мутная моча может свидетельствовать о наличии солей, бактерий, лейкоцитов или слизи. Рекомендуется консультация уролога.'
+                    });
+                } else {
+                    results.push({
+                        parameter: 'Прозрачность',
+                        value: 'Прозрачная',
+                        status: 'normal',
+                        explanation: '✅ Прозрачность мочи в норме.'
+                    });
+                }
             }
             
             // Анализ белка
-            if (protein && protein > 0.033) {
-                results.push({
-                    parameter: 'Белок',
-                    value: protein + ' г/л',
-                    status: 'warning',
-                    explanation: 'Повышенное содержание белка (протеинурия) может указывать на проблемы с почками.'
-                });
-            } else if (protein !== undefined) {
-                results.push({
-                    parameter: 'Белок',
-                    value: protein + ' г/л',
-                    status: 'normal',
-                    explanation: 'Содержание белка в пределах нормы.'
-                });
+            if (protein || protein === 0) {
+                hasData = true;
+                if (protein > 0.033) {
+                    results.push({
+                        parameter: 'Белок',
+                        value: protein + ' г/л',
+                        status: 'warning',
+                        explanation: '❌ Повышенное содержание белка (протеинурия) может указывать на проблемы с почками. Требуется консультация нефролога.'
+                    });
+                } else {
+                    results.push({
+                        parameter: 'Белок',
+                        value: protein + ' г/л',
+                        status: 'normal',
+                        explanation: '✅ Содержание белка в пределах нормы. Функция почек не нарушена.'
+                    });
+                }
+            }
+            
+            // Анализ глюкозы в моче
+            if (urineGlucose) {
+                hasData = true;
+                if (urineGlucose === 'positive') {
+                    results.push({
+                        parameter: 'Глюкоза в моче',
+                        value: 'Обнаружена',
+                        status: 'warning',
+                        explanation: '⚠️ Наличие глюкозы в моче (глюкозурия) может указывать на сахарный диабет или нарушение функции почек. Необходима консультация эндокринолога.'
+                    });
+                } else {
+                    results.push({
+                        parameter: 'Глюкоза в моче',
+                        value: 'Не обнаружена',
+                        status: 'normal',
+                        explanation: '✅ Глюкоза в моче не обнаружена. Отличный показатель!'
+                    });
+                }
             }
             
             // Анализ лейкоцитов в моче
-            if (urineLeukocytes > 5) {
-                results.push({
-                    parameter: 'Лейкоциты в моче',
-                    value: urineLeukocytes + ' в поле зрения',
-                    status: 'warning',
-                    explanation: 'Повышенное количество лейкоцитов может указывать на воспалительный процесс в мочевыводящих путях.'
-                });
-            } else if (urineLeukocytes !== undefined) {
-                results.push({
-                    parameter: 'Лейкоциты в моче',
-                    value: urineLeukocytes + ' в поле зрения',
-                    status: 'normal',
-                    explanation: 'Количество лейкоцитов в пределах нормы.'
-                });
+            if (urineLeukocytes || urineLeukocytes === 0) {
+                hasData = true;
+                if (urineLeukocytes > 5) {
+                    results.push({
+                        parameter: 'Лейкоциты в моче',
+                        value: urineLeukocytes + ' в поле зрения',
+                        status: 'warning',
+                        explanation: '❌ Повышенное количество лейкоцитов (лейкоцитурия) может указывать на воспалительный процесс в мочевыводящих путях (цистит, уретрит, пиелонефрит).'
+                    });
+                } else {
+                    results.push({
+                        parameter: 'Лейкоциты в моче',
+                        value: urineLeukocytes + ' в поле зрения',
+                        status: 'normal',
+                        explanation: '✅ Количество лейкоцитов в пределах нормы. Мочевыводящие пути здоровы!'
+                    });
+                }
             }
             
+            if (!hasData) {
+                alert('Пожалуйста, заполните хотя бы одно поле!');
+                return;
+            }
+            
+            currentResults = results;
             showResults(results);
         }
         
@@ -469,26 +606,73 @@
             
             document.querySelectorAll('.form-section').forEach(section => section.classList.remove('active'));
             document.getElementById('result-section').classList.add('active');
+        }
+        
+        function sendToTelegram() {
+            // Формируем сообщение для отправки
+            let message = "🧪 *Результаты анализа:*\n\n";
             
-            tg.MainButton.show();
-            tg.MainButton.onClick = () => {
-                const message = results.map(r => 
-                    `${r.parameter}: ${r.value}\n${r.explanation}`
-                ).join('\n\n');
-                
+            currentResults.forEach((result, index) => {
+                const statusIcon = result.status === 'normal' ? '✅' : result.status === 'warning' ? '⚠️' : '❌';
+                message += `${statusIcon} *${result.parameter}:* ${result.value}\n`;
+                message += `${result.explanation}\n\n`;
+            });
+            
+            // Добавляем общую рекомендацию
+            const hasWarnings = currentResults.some(result => result.status === 'warning');
+            if (hasWarnings) {
+                message += "💡 *Рекомендация:* Некоторые показатели требуют внимания. Рекомендуется проконсультироваться с врачом для точной диагностики и назначения лечения.";
+            } else {
+                message += "🎉 *Отличные результаты!* Все показатели в норме. Продолжайте вести здоровый образ жизни!";
+            }
+            
+            // Отправляем данные в Telegram
+            if (tg && tg.sendData) {
                 tg.sendData(JSON.stringify({
                     action: 'analysis_results',
-                    results: results,
+                    message: message,
+                    results: currentResults,
                     timestamp: new Date().toISOString()
                 }));
-            };
+                
+                // Показываем уведомление
+                showNotification('Результаты отправлены в чат!');
+            } else {
+                // Если не в Telegram environment, показываем сообщение
+                showNotification('Результаты готовы! (Вне Telegram)');
+                console.log("Результаты для отправки:", message);
+            }
+        }
+        
+        function showNotification(text) {
+            const notification = document.getElementById('notification');
+            notification.textContent = text;
+            notification.style.display = 'block';
+            
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 3000);
         }
         
         function goBack() {
             document.getElementById('result-section').classList.remove('active');
-            document.querySelector('.form-section.active').classList.add('active');
-            tg.MainButton.hide();
+            
+            // Определяем, какая форма была активна
+            const bloodTabActive = document.querySelector('.tab:nth-child(1)').classList.contains('active');
+            if (bloodTabActive) {
+                document.getElementById('blood-form').classList.add('active');
+            } else {
+                document.getElementById('urine-form').classList.add('active');
+            }
+            
+            // Очищаем текущие результаты
+            currentResults = [];
         }
+
+        // Инициализация при загрузке
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Mini App initialized');
+        });
     </script>
 </body>
 </html>
