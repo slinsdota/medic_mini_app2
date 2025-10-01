@@ -116,14 +116,15 @@
             font-weight: 600;
             cursor: pointer;
             transition: transform 0.2s ease;
+            margin-bottom: 20px;
         }
         
         .submit-btn:hover {
             transform: translateY(-2px);
         }
         
-        .result-section {
-            padding: 30px;
+        .results-container {
+            margin-top: 20px;
             display: none;
         }
         
@@ -145,26 +146,32 @@
             background: #f4fce3;
         }
         
-        .back-btn {
-            background: #6c757d;
-            color: white;
-            border: none;
-            padding: 12px 20px;
-            border-radius: 10px;
-            cursor: pointer;
+        .action-buttons {
+            display: flex;
+            gap: 10px;
             margin-top: 20px;
-            width: 100%;
         }
-
+        
         .send-btn {
+            flex: 1;
             background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
             color: white;
             border: none;
             padding: 12px 20px;
             border-radius: 10px;
             cursor: pointer;
-            margin-top: 10px;
-            width: 100%;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .clear-btn {
+            flex: 1;
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 10px;
+            cursor: pointer;
             font-size: 16px;
             font-weight: 600;
         }
@@ -224,6 +231,16 @@
             </div>
             
             <button class="submit-btn" onclick="analyzeBlood()">Анализировать результаты</button>
+            
+            <!-- Контейнер для результатов анализа крови -->
+            <div id="blood-results" class="results-container">
+                <h3 style="margin-bottom: 15px; text-align: center;">Результаты анализа крови</h3>
+                <div id="blood-results-content"></div>
+                <div class="action-buttons">
+                    <button class="send-btn" onclick="sendToTelegram('blood')">📤 Отправить в чат</button>
+                    <button class="clear-btn" onclick="clearForm('blood')">🔄 Очистить форму</button>
+                </div>
+            </div>
         </div>
         
         <!-- Форма анализа мочи -->
@@ -268,14 +285,16 @@
             </div>
             
             <button class="submit-btn" onclick="analyzeUrine()">Анализировать результаты</button>
-        </div>
-        
-        <!-- Блок с результатами -->
-        <div id="result-section" class="result-section">
-            <h2 style="margin-bottom: 20px; text-align: center;">Результаты анализа</h2>
-            <div id="results-container"></div>
-            <button class="send-btn" onclick="sendToTelegram()">📤 Отправить результаты в чат</button>
-            <button class="back-btn" onclick="goBack()">🔄 Сделать новый анализ</button>
+            
+            <!-- Контейнер для результатов анализа мочи -->
+            <div id="urine-results" class="results-container">
+                <h3 style="margin-bottom: 15px; text-align: center;">Результаты анализа мочи</h3>
+                <div id="urine-results-content"></div>
+                <div class="action-buttons">
+                    <button class="send-btn" onclick="sendToTelegram('urine')">📤 Отправить в чат</button>
+                    <button class="clear-btn" onclick="clearForm('urine')">🔄 Очистить форму</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -292,6 +311,11 @@
         function switchTab(tabName) {
             document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
             document.querySelectorAll('.form-section').forEach(section => section.classList.remove('active'));
+            
+            // Скрываем все контейнеры с результатами
+            document.querySelectorAll('.results-container').forEach(container => {
+                container.style.display = 'none';
+            });
             
             if (tabName === 'blood') {
                 document.querySelector('.tab:nth-child(1)').classList.add('active');
@@ -446,7 +470,7 @@
             }
             
             currentResults = results;
-            showResults(results);
+            showBloodResults(results);
         }
         
         function analyzeUrine() {
@@ -572,7 +596,7 @@
             }
             
             currentResults = results;
-            showResults(results);
+            showUrineResults(results);
         }
         
         function getColorDescription(color) {
@@ -585,8 +609,8 @@
             return colors[color] || color;
         }
         
-        function showResults(results) {
-            const container = document.getElementById('results-container');
+        function showBloodResults(results) {
+            const container = document.getElementById('blood-results-content');
             container.innerHTML = '';
             
             if (results.length === 0) {
@@ -596,7 +620,7 @@
                     const item = document.createElement('div');
                     item.className = `result-item ${result.status}`;
                     item.innerHTML = `
-                        <h3>${result.parameter}</h3>
+                        <h4>${result.parameter}</h4>
                         <p><strong>Значение:</strong> ${result.value}</p>
                         <p>${result.explanation}</p>
                     `;
@@ -604,13 +628,42 @@
                 });
             }
             
-            document.querySelectorAll('.form-section').forEach(section => section.classList.remove('active'));
-            document.getElementById('result-section').classList.add('active');
+            // Показываем контейнер с результатами
+            document.getElementById('blood-results').style.display = 'block';
+            
+            // Прокручиваем страницу к результатам
+            document.getElementById('blood-results').scrollIntoView({ behavior: 'smooth' });
         }
         
-        function sendToTelegram() {
+        function showUrineResults(results) {
+            const container = document.getElementById('urine-results-content');
+            container.innerHTML = '';
+            
+            if (results.length === 0) {
+                container.innerHTML = '<div class="result-item">Пожалуйста, введите данные для анализа</div>';
+            } else {
+                results.forEach(result => {
+                    const item = document.createElement('div');
+                    item.className = `result-item ${result.status}`;
+                    item.innerHTML = `
+                        <h4>${result.parameter}</h4>
+                        <p><strong>Значение:</strong> ${result.value}</p>
+                        <p>${result.explanation}</p>
+                    `;
+                    container.appendChild(item);
+                });
+            }
+            
+            // Показываем контейнер с результатами
+            document.getElementById('urine-results').style.display = 'block';
+            
+            // Прокручиваем страницу к результатам
+            document.getElementById('urine-results').scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        function sendToTelegram(type) {
             // Формируем сообщение для отправки
-            let message = "🧪 *Результаты анализа:*\n\n";
+            let message = type === 'blood' ? "🩸 *Результаты анализа крови:*\n\n" : "💧 *Результаты анализа мочи:*\n\n";
             
             currentResults.forEach((result, index) => {
                 const statusIcon = result.status === 'normal' ? '✅' : result.status === 'warning' ? '⚠️' : '❌';
@@ -630,6 +683,7 @@
             if (tg && tg.sendData) {
                 tg.sendData(JSON.stringify({
                     action: 'analysis_results',
+                    type: type,
                     message: message,
                     results: currentResults,
                     timestamp: new Date().toISOString()
@@ -644,6 +698,26 @@
             }
         }
         
+        function clearForm(type) {
+            if (type === 'blood') {
+                document.getElementById('hemoglobin').value = '';
+                document.getElementById('leukocytes').value = '';
+                document.getElementById('platelets').value = '';
+                document.getElementById('glucose').value = '';
+                document.getElementById('cholesterol').value = '';
+                document.getElementById('blood-results').style.display = 'none';
+            } else {
+                document.getElementById('urine-color').value = '';
+                document.getElementById('transparency').value = '';
+                document.getElementById('protein').value = '';
+                document.getElementById('urine-glucose').value = '';
+                document.getElementById('urine-leukocytes').value = '';
+                document.getElementById('urine-results').style.display = 'none';
+            }
+            
+            currentResults = [];
+        }
+        
         function showNotification(text) {
             const notification = document.getElementById('notification');
             notification.textContent = text;
@@ -652,21 +726,6 @@
             setTimeout(() => {
                 notification.style.display = 'none';
             }, 3000);
-        }
-        
-        function goBack() {
-            document.getElementById('result-section').classList.remove('active');
-            
-            // Определяем, какая форма была активна
-            const bloodTabActive = document.querySelector('.tab:nth-child(1)').classList.contains('active');
-            if (bloodTabActive) {
-                document.getElementById('blood-form').classList.add('active');
-            } else {
-                document.getElementById('urine-form').classList.add('active');
-            }
-            
-            // Очищаем текущие результаты
-            currentResults = [];
         }
 
         // Инициализация при загрузке
