@@ -164,6 +164,18 @@
             font-weight: 600;
         }
 
+        .copy-btn {
+            flex: 1;
+            background: #ffa94d;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
         .clear-btn {
             flex: 1;
             background: #6c757d;
@@ -238,7 +250,8 @@
                 <div id="blood-results-content"></div>
                 <div class="action-buttons">
                     <button class="send-btn" onclick="sendToTelegram('blood')">📤 Отправить в чат</button>
-                    <button class="clear-btn" onclick="clearForm('blood')">🔄 Очистить форму</button>
+                    <button class="copy-btn" onclick="copyToClipboard()">📋 Копировать</button>
+                    <button class="clear-btn" onclick="clearForm('blood')">🔄 Очистить</button>
                 </div>
             </div>
         </div>
@@ -292,7 +305,8 @@
                 <div id="urine-results-content"></div>
                 <div class="action-buttons">
                     <button class="send-btn" onclick="sendToTelegram('urine')">📤 Отправить в чат</button>
-                    <button class="clear-btn" onclick="clearForm('urine')">🔄 Очистить форму</button>
+                    <button class="copy-btn" onclick="copyToClipboard()">📋 Копировать</button>
+                    <button class="clear-btn" onclick="clearForm('urine')">🔄 Очистить</button>
                 </div>
             </div>
         </div>
@@ -305,8 +319,10 @@
         let currentResults = [];
         
         // Инициализация Telegram Web App
-        tg.expand();
-        tg.MainButton.hide();
+        if (tg) {
+            tg.expand();
+            tg.MainButton.hide();
+        }
         
         function switchTab(tabName) {
             document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
@@ -678,24 +694,89 @@
             } else {
                 message += "🎉 *Отличные результаты!* Все показатели в норме. Продолжайте вести здоровый образ жизни!";
             }
-            
-            // Отправляем данные в Telegram
-            if (tg && tg.sendData) {
-                tg.sendData(JSON.stringify({
-                    action: 'analysis_results',
-                    type: type,
-                    message: message,
-                    results: currentResults,
-                    timestamp: new Date().toISOString()
-                }));
+
+            // Проверяем, находимся ли мы в Telegram Mini App
+            if (window.Telegram && window.Telegram.WebApp) {
+                const tg = window.Telegram.WebApp;
                 
-                // Показываем уведомление
-                showNotification('Результаты отправлены в чат!');
+                try {
+                    // Способ 1: Отправка данных через sendData
+                    tg.sendData(JSON.stringify({
+                        action: 'analysis_results',
+                        type: type,
+                        message: message,
+                        results: currentResults,
+                        timestamp: new Date().toISOString()
+                    }));
+                    
+                    // Способ 2: Показываем всплывающее окно с результатами
+                    tg.showPopup({
+                        title: 'Результаты готовы!',
+                        message: 'Результаты анализа были отправлены в чат. Проверьте историю переписки с ботом.',
+                        buttons: [{ type: 'ok' }]
+                    });
+                    
+                    showNotification('✅ Результаты отправлены в чат!');
+                    
+                } catch (error) {
+                    console.error('Ошибка при отправке:', error);
+                    // Если отправка не удалась, показываем результаты в попапе
+                    tg.showPopup({
+                        title: 'Результаты анализа',
+                        message: message.substring(0, 200) + '...', // Ограничиваем длину
+                        buttons: [{ type: 'ok' }]
+                    });
+                    showNotification('📋 Результаты показаны во всплывающем окне');
+                }
             } else {
-                // Если не в Telegram environment, показываем сообщение
-                showNotification('Результаты готовы! (Вне Telegram)');
-                console.log("Результаты для отправки:", message);
+                // Если не в Telegram, показываем результаты в alert
+                alert('Результаты анализа:\n\n' + message);
+                showNotification('📋 Результаты показаны в окне браузера');
             }
+            
+            // Логируем для отладки
+            console.log('Отправляемые данные:', {
+                action: 'analysis_results',
+                type: type,
+                message: message,
+                results: currentResults
+            });
+        }
+        
+        function copyToClipboard() {
+            let message = "🧪 Результаты анализа:\n\n";
+            
+            currentResults.forEach((result, index) => {
+                const statusIcon = result.status === 'normal' ? '✅' : result.status === 'warning' ? '⚠️' : '❌';
+                message += `${statusIcon} ${result.parameter}: ${result.value}\n`;
+                message += `${result.explanation}\n\n`;
+            });
+            
+            // Используем современный API для копирования
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(message).then(function() {
+                    showNotification('📋 Результаты скопированы в буфер обмена!');
+                }).catch(function(err) {
+                    // Fallback для старых браузеров
+                    copyToClipboardFallback(message);
+                });
+            } else {
+                copyToClipboardFallback(message);
+            }
+        }
+
+        function copyToClipboardFallback(text) {
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            document.body.appendChild(textArea);
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                showNotification('📋 Результаты скопированы в буфер обмена!');
+            } catch (err) {
+                showNotification('❌ Не удалось скопировать результаты');
+            }
+            document.body.removeChild(textArea);
         }
         
         function clearForm(type) {
