@@ -6,6 +6,7 @@
 [![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?logo=javascript&logoColor=black)](https://developer.mozilla.org/ru/docs/Web/JavaScript)
 
 Многофункциональное Telegram Mini App для расшифровки и анализа медицинских лабораторных результатов. Приложение предоставляет подробные объяснения показателей крови, мочи и системы свертываемости.
+> имеет информационных характер, за медицинской помощью - обратитесь к специалисту
 
 ## ✨ Возможности
 
