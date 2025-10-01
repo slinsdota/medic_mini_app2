@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Анализатор лабораторных результатов</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        
+        .tab-container {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .tab {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            background: none;
+            border: none;
+            font-size: 16px;
+            font-weight: 600;
+            color: #6c757d;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .tab.active {
+            color: #4facfe;
+            border-bottom: 3px solid #4facfe;
+            background: white;
+        }
+        
+        .form-section {
+            padding: 30px;
+            display: none;
+        }
+        
+        .form-section.active {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: #4facfe;
+        }
+        
+        .submit-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+        
+        .submit-btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .result-section {
+            padding: 30px;
+            display: none;
+        }
+        
+        .result-item {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            border-left: 4px solid #4facfe;
+        }
+        
+        .result-item.warning {
+            border-left-color: #ff6b6b;
+            background: #fff5f5;
+        }
+        
+        .result-item.normal {
+            border-left-color: #51cf66;
+            background: #f4fce3;
+        }
+        
+        .back-btn {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧪 Анализатор лабораторных результатов</h1>
+            <p>Введите ваши показатели для получения расшифровки</p>
+        </div>
+        
+        <div class="tab-container">
+            <button class="tab active" onclick="switchTab('blood')">Анализ крови</button>
+            <button class="tab" onclick="switchTab('urine')">Анализ мочи</button>
+        </div>
+        
+        <!-- Форма анализа крови -->
+        <div id="blood-form" class="form-section active">
+            <div class="form-group">
+                <label>Гемоглобин (г/л)</label>
+                <input type="number" id="hemoglobin" placeholder="Норма: 120-160 г/л">
+            </div>
+            
+            <div class="form-group">
+                <label>Лейкоциты (×10⁹/л)</label>
+                <input type="number" step="0.1" id="leukocytes" placeholder="Норма: 4.0-9.0">
+            </div>
+            
+            <div class="form-group">
+                <label>Тромбоциты (×10⁹/л)</label>
+                <input type="number" id="platelets" placeholder="Норма: 180-320">
+            </div>
+            
+            <div class="form-group">
+                <label>Глюкоза (ммоль/л)</label>
+                <input type="number" step="0.1" id="glucose" placeholder="Норма: 3.3-5.5">
+            </div>
+            
+            <div class="form-group">
+                <label>Холестерин (ммоль/л)</label>
+                <input type="number" step="0.1" id="cholesterol" placeholder="Норма: < 5.2">
+            </div>
+            
+            <button class="submit-btn" onclick="analyzeBlood()">Анализировать результаты</button>
+        </div>
+        
+        <!-- Форма анализа мочи -->
+        <div id="urine-form" class="form-section">
+            <div class="form-group">
+                <label>Цвет</label>
+                <select id="urine-color">
+                    <option value="">Выберите цвет</option>
+                    <option value="light-yellow">Соломенно-желтый</option>
+                    <option value="dark-yellow">Темно-желтый</option>
+                    <option value="red">Красный</option>
+                    <option value="brown">Коричневый</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>Прозрачность</label>
+                <select id="transparency">
+                    <option value="">Выберите прозрачность</option>
+                    <option value="transparent">Прозрачная</option>
+                    <option value="cloudy">Мутная</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>Белок (г/л)</label>
+                <input type="number" step="0.01" id="protein" placeholder="Норма: до 0.033">
+            </div>
+            
+            <div class="form-group">
+                <label>Глюкоза в моче</label>
+                <select id="urine-glucose">
+                    <option value="">Выберите результат</option>
+                    <option value="negative">Отрицательно</option>
+                    <option value="positive">Положительно</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>Лейкоциты в моче (в поле зрения)</label>
+                <input type="number" id="urine-leukocytes" placeholder="Норма: 0-5">
+            </div>
+            
+            <button class="submit-btn" onclick="analyzeUrine()">Анализировать результаты</button>
+        </div>
+        
+        <!-- Блок с результатами -->
+        <div id="result-section" class="result-section">
+            <h2 style="margin-bottom: 20px; text-align: center;">Результаты анализа</h2>
+            <div id="results-container"></div>
+            <button class="back-btn" onclick="goBack()">Вернуться к вводу данных</button>
+        </div>
+    </div>
+
+    <script>
+        let tg = window.Telegram.WebApp;
+        tg.expand();
+        tg.MainButton.setText("Отправить результаты").hide();
+        
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.form-section').forEach(section => section.classList.remove('active'));
+            
+            if (tabName === 'blood') {
+                document.querySelector('.tab:nth-child(1)').classList.add('active');
+                document.getElementById('blood-form').classList.add('active');
+            } else {
+                document.querySelector('.tab:nth-child(2)').classList.add('active');
+                document.getElementById('urine-form').classList.add('active');
+            }
+        }
+        
+        function analyzeBlood() {
+            const hemoglobin = parseFloat(document.getElementById('hemoglobin').value);
+            const leukocytes = parseFloat(document.getElementById('leukocytes').value);
+            const platelets = parseFloat(document.getElementById('platelets').value);
+            const glucose = parseFloat(document.getElementById('glucose').value);
+            const cholesterol = parseFloat(document.getElementById('cholesterol').value);
+            
+            let results = [];
+            
+            // Анализ гемоглобина
+            if (hemoglobin) {
+                if (hemoglobin < 120) {
+                    results.push({
+                        parameter: 'Гемоглобин',
+                        value: hemoglobin + ' г/л',
+                        status: 'warning',
+                        explanation: 'Пониженный уровень гемоглобина может указывать на анемию. Рекомендуется консультация врача.'
+                    });
+                } else if (hemoglobin > 160) {
+                    results.push({
+                        parameter: 'Гемоглобин',
+                        value: hemoglobin + ' г/л',
+                        status: 'warning',
+                        explanation: 'Повышенный уровень гемоглобина может быть связан с обезвоживанием или другими состояниями.'
+                    });
+                } else {
+                    results.push({
+                        parameter: 'Гемоглобин',
+                        value: hemoglobin + ' г/л',
+                        status: 'normal',
+                        explanation: 'Уровень гемоглобина в пределах нормы.'
+                    });
+                }
+            }
+            
+            // Анализ лейкоцитов
+            if (leukocytes) {
+                if (leukocytes < 4.0) {
+                    results.push({
+                        parameter: 'Лейкоциты',
+                        value: leukocytes + ' ×10⁹/л',
+                        status: 'warning',
+                        explanation: 'Пониженное количество лейкоцитов (лейкопения) может свидетельствовать о снижении иммунитета.'
+                    });
+                } else if (leukocytes > 9.0) {
+                    results.push({
+                        parameter: 'Лейкоциты',
+                        value: leukocytes + ' ×10⁹/л',
+                        status: 'warning',
+                        explanation: 'Повышенное количество лейкоцитов (лейкоцитоз) может указывать на воспалительный процесс.'
+                    });
+                } else {
+                    results.push({
+                        parameter: 'Лейкоциты',
+                        value: leukocytes + ' ×10⁹/л',
+                        status: 'normal',
+                        explanation: 'Уровень лейкоцитов в пределах нормы.'
+                    });
+                }
+            }
+            
+            // Анализ глюкозы
+            if (glucose) {
+                if (glucose < 3.3) {
+                    results.push({
+                        parameter: 'Глюкоза',
+                        value: glucose + ' ммоль/л',
+                        status: 'warning',
+                        explanation: 'Пониженный уровень глюкозы (гипогликемия). Требуется консультация врача.'
+                    });
+                } else if (glucose > 5.5) {
+                    results.push({
+                        parameter: 'Глюкоза',
+                        value: glucose + ' ммоль/л',
+                        status: 'warning',
+                        explanation: 'Повышенный уровень глюкозы (гипергликемия). Рекомендуется дополнительное обследование.'
+                    });
+                } else {
+                    results.push({
+                        parameter: 'Глюкоза',
+                        value: glucose + ' ммоль/л',
+                        status: 'normal',
+                        explanation: 'Уровень глюкозы в пределах нормы.'
+                    });
+                }
+            }
+            
+            showResults(results);
+        }
+        
+        function analyzeUrine() {
+            const color = document.getElementById('urine-color').value;
+            const transparency = document.getElementById('transparency').value;
+            const protein = parseFloat(document.getElementById('protein').value);
+            const urineGlucose = document.getElementById('urine-glucose').value;
+            const urineLeukocytes = parseInt(document.getElementById('urine-leukocytes').value);
+            
+            let results = [];
+            
+            // Анализ цвета
+            if (color === 'red' || color === 'brown') {
+                results.push({
+                    parameter: 'Цвет мочи',
+                    value: getColorDescription(color),
+                    status: 'warning',
+                    explanation: 'Необычный цвет мочи может указывать на наличие крови или других примесей. Необходима консультация врача.'
+                });
+            } else if (color) {
+                results.push({
+                    parameter: 'Цвет мочи',
+                    value: getColorDescription(color),
+                    status: 'normal',
+                    explanation: 'Цвет мочи в пределах нормы.'
+                });
+            }
+            
+            // Анализ прозрачности
+            if (transparency === 'cloudy') {
+                results.push({
+                    parameter: 'Прозрачность',
+                    value: 'Мутная',
+                    status: 'warning',
+                    explanation: 'Мутная моча может свидетельствовать о наличии солей, бактерий или лейкоцитов.'
+                });
+            } else if (transparency) {
+                results.push({
+                    parameter: 'Прозрачность',
+                    value: 'Прозрачная',
+                    status: 'normal',
+                    explanation: 'Прозрачность мочи в норме.'
+                });
+            }
+            
+            // Анализ белка
+            if (protein && protein > 0.033) {
+                results.push({
+                    parameter: 'Белок',
+                    value: protein + ' г/л',
+                    status: 'warning',
+                    explanation: 'Повышенное содержание белка (протеинурия) может указывать на проблемы с почками.'
+                });
+            } else if (protein !== undefined) {
+                results.push({
+                    parameter: 'Белок',
+                    value: protein + ' г/л',
+                    status: 'normal',
+                    explanation: 'Содержание белка в пределах нормы.'
+                });
+            }
+            
+            // Анализ лейкоцитов в моче
+            if (urineLeukocytes > 5) {
+                results.push({
+                    parameter: 'Лейкоциты в моче',
+                    value: urineLeukocytes + ' в поле зрения',
+                    status: 'warning',
+                    explanation: 'Повышенное количество лейкоцитов может указывать на воспалительный процесс в мочевыводящих путях.'
+                });
+            } else if (urineLeukocytes !== undefined) {
+                results.push({
+                    parameter: 'Лейкоциты в моче',
+                    value: urineLeukocytes + ' в поле зрения',
+                    status: 'normal',
+                    explanation: 'Количество лейкоцитов в пределах нормы.'
+                });
+            }
+            
+            showResults(results);
+        }
+        
+        function getColorDescription(color) {
+            const colors = {
+                'light-yellow': 'Соломенно-желтый',
+                'dark-yellow': 'Темно-желтый',
+                'red': 'Красный',
+                'brown': 'Коричневый'
+            };
+            return colors[color] || color;
+        }
+        
+        function showResults(results) {
+            const container = document.getElementById('results-container');
+            container.innerHTML = '';
+            
+            if (results.length === 0) {
+                container.innerHTML = '<div class="result-item">Пожалуйста, введите данные для анализа</div>';
+            } else {
+                results.forEach(result => {
+                    const item = document.createElement('div');
+                    item.className = `result-item ${result.status}`;
+                    item.innerHTML = `
+                        <h3>${result.parameter}</h3>
+                        <p><strong>Значение:</strong> ${result.value}</p>
+                        <p>${result.explanation}</p>
+                    `;
+                    container.appendChild(item);
+                });
+            }
+            
+            document.querySelectorAll('.form-section').forEach(section => section.classList.remove('active'));
+            document.getElementById('result-section').classList.add('active');
+            
+            tg.MainButton.show();
+            tg.MainButton.onClick = () => {
+                const message = results.map(r => 
+                    `${r.parameter}: ${r.value}\n${r.explanation}`
+                ).join('\n\n');
+                
+                tg.sendData(JSON.stringify({
+                    action: 'analysis_results',
+                    results: results,
+                    timestamp: new Date().toISOString()
+                }));
+            };
+        }
+        
+        function goBack() {
+            document.getElementById('result-section').classList.remove('active');
+            document.querySelector('.form-section.active').classList.add('active');
+            tg.MainButton.hide();
+        }
+    </script>
+</body>
+</html>
