@@ -1573,12 +1573,10 @@
             }
 
             // Проверяем, находимся ли мы в Telegram Mini App
-            if (window.Telegram && window.Telegram.WebApp) {
-                const tg = window.Telegram.WebApp;
-                
+            if (window.Telegram && window.Telegram.WebApp) { 
                 try {
                     // Способ 1: Отправка данных через sendData
-                    tg.sendData(JSON.stringify({
+                    window.Telegram.WebApp.sendData(JSON.stringify({
                         action: 'analysis_results',
                         type: type,
                         message: message,
@@ -1587,7 +1585,7 @@
                     }));
                     
                     // Способ 2: Показываем всплывающее окно с результатами
-                    tg.showPopup({
+                    window.Telegram.WebApp.showPopup({
                         title: 'Результаты готовы!',
                         message: 'Результаты анализа были отправлены в чат. Проверьте историю переписки с ботом.',
                         buttons: [{ type: 'ok' }]
